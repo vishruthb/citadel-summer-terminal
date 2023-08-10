@@ -110,7 +110,7 @@ class AlgoStrategy(gamelib.AlgoCore):
         ### Should implement something to check if defense is complete (or nearly)
         if game_state.turn_number < 5:
             ### Quick damage strategies for accumulating structure points. 
-            if game_state.get_resource(game_state.MP) > 8
+            if game_state.get_resource(game_state.MP) > 8:
                 game_state.attempt_spawn(SCOUT, num = 1000, locations = self.least_damage_spawn_location(game_state, [[13,0], [14,0], [7,6], [20,6], [9,4], [18,4], [5,8], [22,8]])) # Checking attacking corners as well as some random locations. 
                      # To make better: Edit least damage spawn so it also returns damage,
                      # Check damage before doing any spawns, don't want to throw away                         #  points.

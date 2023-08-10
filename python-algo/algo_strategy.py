@@ -66,6 +66,18 @@ class AlgoStrategy(gamelib.AlgoCore):
     strategy and can safely be replaced for your custom algo.
     """
 
+    def spawn_edge(self, game_state, unit_type, x_locs):
+        spawn_locs = []
+        for x_loc in x_locs:
+            y_loc = 0
+            if x_loc < 14:
+                y_loc = 13 - x_loc
+            else:
+                y_loc = x_loc - 14
+            spawn_locs.append([x_loc, y_loc])
+
+        game_state.attempt_spawn(unit_type, spawn_locs)
+
     def starter_strategy(self, game_state):
         """
         For defense we will use a spread out layout and some interceptors early on.

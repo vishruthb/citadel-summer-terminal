@@ -4,6 +4,7 @@ import math
 import warnings
 from sys import maxsize
 import json
+from collections import deque
 
 class AlgoStrategy(gamelib.AlgoCore):
     def __init__(self):
@@ -12,6 +13,7 @@ class AlgoStrategy(gamelib.AlgoCore):
         random.seed(seed)
         self.lastRoundEnemyHealth = 30
         self.side = 'right'
+        self.attacked_locations = {} 
 
     def on_game_start(self, config):
         self.config = config
@@ -29,9 +31,33 @@ class AlgoStrategy(gamelib.AlgoCore):
     def on_turn(self, turn_state):
         game_state = gamelib.GameState(self.config, turn_state)
         game_state.suppress_warnings(True)
-        self.starter_strategy(game_state)
+        self.update_attacked_locations(game_state)
+        self.dynamic_defense_strategy(game_state)
+        self.attack(game_state)
         game_state.submit_turn()
+        
+    def update_attacked_locations(self, game_state):
+        for x in range(13):
+            for y in range(len(game_state.game_map[x])):
+                location = (x, y)
+                units_list = game_state.game_map[x][y]
+                for unit in units_list:
+                    if unit.player_index == 1 and unit.health < unit.max_health:
+                        self.attacked_locations[location] = self.attacked_locations.get(location, 0) + 1
 
+    def bfs(self, game_state, start, end):
+        visited = set()
+        queue = deque([start])
+        while queue:
+            vertex = queue.popleft()
+            if vertex == end:
+                return True
+            for neighbor in game_state.game_map.get_adjacent_locations(vertex):
+                if neighbor not in visited:
+                    visited.add(neighbor)
+                    queue.append(neighbor)
+        return False
+    
     def starter_strategy(self, game_state):
         self.build_defences(game_state)
         self.attack(game_state)
@@ -86,6 +112,17 @@ class AlgoStrategy(gamelib.AlgoCore):
                     game_state.attempt_spawn(SUPPORT, final_supports)
                     for support in final_supports:
                         game_state.attempt_upgrade(support)
+                                
+    def dynamic_defense_strategy(self, game_state):
+        # Identify and defend frequently attacked locations
+        frequently_attacked = sorted(self.attacked_locations, key=self.attacked_locations.get, reverse=True)[:5]
+        for loc in frequently_attacked:
+            game_state.attempt_spawn(WALL, loc)
+
+        # Block paths using BFS that lead straight to your core from enemy spawn points
+        for loc in game_state.game_map.get_edge_locations(game_state.game_map.BOTTOM_LEFT) + game_state.game_map.get_edge_locations(game_state.game_map.BOTTOM_RIGHT):
+            if self.bfs(game_state, loc, [13, 27]) or self.bfs(game_state, loc, [14, 27]):  # Assuming [13,27] and [14,27] are your core locations
+                game_state.attempt_spawn(WALL, loc)
                 
     def attack(self,game_state):
         scoredLastRound = (not (self.lastRoundEnemyHealth == game_state.enemy_health)) or game_state.turn_number == 0
